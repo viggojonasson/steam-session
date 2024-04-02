@@ -7,7 +7,7 @@ pub (crate) use helpers::{EncryptedPassword, AuthenticationClientConstructorOpti
 use helpers::{PlatformData, DeviceDetails, CheckMachineAuthResponse, get_machine_id};
 
 use crate::enums::{EOSType, EAuthTokenPlatformType, ETokenRenewalType, EAuthSessionGuardType};
-use crate::helpers::{decode_jwt, encode_base64, get_spoofed_hostname, create_api_headers, DecodeError};
+use crate::helpers::{JwtPayload, encode_base64, get_spoofed_hostname, create_api_headers, DecodeError};
 use crate::net::ApiRequest;
 use crate::transports::Transport;
 use crate::request::{StartAuthSessionWithCredentialsRequest, MobileConfirmationRequest};
@@ -28,6 +28,7 @@ use crate::proto::steammessages_auth_steamclient::{
     CAuthentication_PollAuthSessionStatus_Response,
 };
 use crate::proto::custom::CAuthentication_BeginAuthSessionViaCredentials_Request_BinaryGuardData;
+use std::str::FromStr;
 use reqwest::Client;
 use steamid_ng::SteamID;
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT, ORIGIN, REFERER, COOKIE, CONTENT_TYPE};
@@ -237,7 +238,7 @@ where
         refresh_token: String,
         renew_refresh: bool,
     ) -> Result<CAuthentication_AccessToken_GenerateForApp_Response, Error> {
-        let decoded = decode_jwt(&refresh_token)?;
+        let decoded = JwtPayload::from_str(&refresh_token)?;
         let mut msg = CAuthentication_AccessToken_GenerateForApp_Request::new();
         let renewal_type = if renew_refresh {
             ETokenRenewalType::k_ETokenRenewalType_Allow

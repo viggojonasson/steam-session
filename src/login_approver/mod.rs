@@ -17,11 +17,13 @@ mod error;
 mod builder;
 mod helpers;
 
+use std::str::FromStr;
+
 pub use error::Error;
 pub use builder::LoginApproverBuilder;
 
 use crate::authentication_client::{AuthenticationClient, AuthenticationClientConstructorOptions};
-use crate::helpers::{decode_jwt, decode_base64, generate_hmac_signature};
+use crate::helpers::{JwtPayload, decode_base64, generate_hmac_signature};
 use crate::request::{ApproveAuthSessionRequest, MobileConfirmationRequest};
 use crate::transports::web_api::WebApiTransport;
 use reqwest::Client;
@@ -47,7 +49,7 @@ impl LoginApprover {
     
     /// Gets the SteamID.
     pub fn steamid(&self) -> Result<SteamID, Error> {
-        let decoded_token = decode_jwt(&self.access_token)?;
+        let decoded_token = JwtPayload::from_str(&self.access_token)?;
         
         Ok(decoded_token.sub)
     }
@@ -62,7 +64,7 @@ impl LoginApprover {
         &mut self,
         access_token: String,
     ) -> Result<(), Error> {
-        let decoded = decode_jwt(&access_token)?;
+        let decoded = JwtPayload::from_str(&access_token)?;
         
         if !decoded.aud.iter().any(|s| s == "derive") {
             return Err(Error::RefreshToken);
@@ -133,7 +135,7 @@ impl TryFrom<LoginApproverBuilder> for LoginApprover {
             client,
             user_agent: builder.user_agent,
         });
-        let decoded_access_token = decode_jwt(&builder.access_token)?;
+        let decoded_access_token = JwtPayload::from_str(&builder.access_token)?;
         
         if !decoded_access_token.aud.iter().any(|s| s == "derive") {
             return Err(Error::RefreshToken);

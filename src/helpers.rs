@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, InvalidHeaderValue};
 use serde_json::Value;
@@ -62,6 +64,22 @@ pub struct JwtPayload {
     pub ip_subject: String,
     /// The IP address of the confirmer.
     pub ip_confirmer: String,
+}
+
+impl FromStr for JwtPayload {
+    type Err = DecodeError;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        decode_jwt(s)
+    }
+}
+
+impl TryFrom<&str> for JwtPayload {
+    type Error = DecodeError;
+    
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        decode_jwt(value)
+    }
 }
 
 /// Converts a value to multipart.
@@ -154,7 +172,7 @@ pub fn create_api_headers() -> Result<HeaderMap, InvalidHeaderValue> {
 /// ```
 /// 
 /// See https://jwt.io/introduction for more information on JSON web tokens.
-pub fn decode_jwt(jwt: &str) -> Result<JwtPayload, DecodeError> {
+fn decode_jwt(jwt: &str) -> Result<JwtPayload, DecodeError> {
     let mut parts = jwt.split('.');
     
     parts.next().ok_or(DecodeError::InvalidJWT)?;

@@ -2,6 +2,8 @@ mod error;
 mod builder;
 mod helpers;
 
+use std::str::FromStr;
+
 pub use error::LoginSessionError;
 pub use builder::LoginSessionBuilder;
 
@@ -18,7 +20,7 @@ use crate::transports::web_api::WebApiTransport;
 use crate::transports::{Transport, WebSocketCMTransport};
 use crate::types::DateTime;
 use crate::authentication_client::{AuthenticationClient, Error as AuthenticationClientError};
-use crate::helpers::{decode_jwt, generate_sessionid, create_api_headers, value_to_multipart};
+use crate::helpers::{JwtPayload, generate_sessionid, create_api_headers, value_to_multipart};
 use crate::enums::{ESessionPersistence, EAuthTokenPlatformType, EAuthSessionGuardType};
 
 use cookie::Cookie;
@@ -172,7 +174,7 @@ where
         } else {
             None
         }?;
-        let decoded = decode_jwt(token).ok()?;
+        let decoded = JwtPayload::from_str(token).ok()?;
         
         Some(decoded.sub)
     }
@@ -218,7 +220,7 @@ where
             return Ok(());
         }
         
-        let decoded = decode_jwt(&token)?;
+        let decoded = JwtPayload::from_str(&token)?;
         
         if decoded.aud.iter().any(|a| a == "derive") {
             return Err(LoginSessionError::ExpectedAccessToken);
@@ -231,7 +233,7 @@ where
         }
         
         if let Some(refresh_token) = &self.refresh_token {
-            let decoded_refresh_token = decode_jwt(refresh_token)?;
+            let decoded_refresh_token = JwtPayload::from_str(refresh_token)?;
             
             if decoded_refresh_token.sub != decoded.sub {
                 return Err(LoginSessionError::TokenBelongsToOtherAccount);
@@ -265,7 +267,7 @@ where
             return Ok(());
         }
         
-        let decoded = decode_jwt(&token)?;
+        let decoded = JwtPayload::from_str(&token)?;
         
         if !decoded.aud.iter().any(|a| a == "derive") {
             return Err(LoginSessionError::ExpectedRefreshToken);
@@ -289,7 +291,7 @@ where
         }
         
         if let Some(access_token) = &self.access_token {
-            let decoded_access_token = decode_jwt(access_token)?;
+            let decoded_access_token = JwtPayload::from_str(access_token)?;
             
             if decoded_access_token.sub != decoded.sub {
                 return Err(LoginSessionError::TokenBelongsToOtherAccount);
